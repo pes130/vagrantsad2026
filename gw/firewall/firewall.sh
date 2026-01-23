@@ -54,11 +54,22 @@ iptables -A OUTPUT -o eth3 -d 172.2.99.10 -p tcp --sport 22 -m conntrack --ctsta
 #############################
 # R1. Se debe hacer NAT del tráfico saliente
 iptables -t nat -A POSTROUTING -s 172.2.99.0/24 -o eth0 -j MASQUERADE
+# R2. Permitir acceso desde la WAN a www a través del 80 haciendo port forwading
+
+# R3.a. Usuarios de la LAN pueden acceder a 80 y 443 de www
+iptables -A FORWARD -i eth3 -o eth2 -s 172.2.99.0/24 -d 172.1.99.3 -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth3 -s 172.1.99.3 -d 172.2.99.0/24 -p tcp --sport 80 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# R3.b. Adminpc debe poder acceder por ssh a cualquier máquina de DMZ
+iptables -A FORWARD -i eth3 -o eth2 -s 172.2.99.10 -d 172.1.99.0/24 -p tcp --dport 22 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth3 -s 172.1.99.0/24 -d 172.2.99.10 -p tcp --sport 22 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
 
 # R4. Permitir salir tráfico de la LAN
 iptables -A FORWARD -i eth3 -o eth0 -s 172.2.99.0/24 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 iptables -A FORWARD -i eth0 -o eth3 -d 172.2.99.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
+# R5. Permitir salir tráfico de la DMZ (sólo http/https/dns/ntp)
 
 
 ##### Logs para depurar
