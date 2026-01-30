@@ -54,7 +54,10 @@ iptables -A OUTPUT -o eth3 -d 172.2.99.10 -p tcp --sport 22 -m conntrack --ctsta
 #############################
 # R1. Se debe hacer NAT del tráfico saliente
 iptables -t nat -A POSTROUTING -s 172.2.99.0/24 -o eth0 -j MASQUERADE
+iptables -t nat -A POSTROUTING -s 172.1.99.0/24 -o eth0 -j MASQUERADE
+
 # R2. Permitir acceso desde la WAN a www a través del 80 haciendo port forwading
+iptables -t nat -A PREROUTING -i eth1 -p tcp --dport 80 -j DNAT --to 172.1.99.3:80
 
 # R3.a. Usuarios de la LAN pueden acceder a 80 y 443 de www
 iptables -A FORWARD -i eth3 -o eth2 -s 172.2.99.0/24 -d 172.1.99.3 -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
@@ -70,7 +73,15 @@ iptables -A FORWARD -i eth3 -o eth0 -s 172.2.99.0/24 -m conntrack --ctstate NEW,
 iptables -A FORWARD -i eth0 -o eth3 -d 172.2.99.0/24 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 # R5. Permitir salir tráfico de la DMZ (sólo http/https/dns/ntp)
+iptables -A FORWARD -i eth2 -o eth0 -s 172.1.99.0/24 -p tcp --dport 80 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth0 -s 172.1.99.0/24 -p tcp --dport 443 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth0 -s 172.1.99.0/24 -p udp --dport 53 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i eth2 -o eth0 -s 172.1.99.0/24 -p udp --dport 123 -m conntrack --ctstate NEW,ESTABLISHED -j ACCEPT
 
+iptables -A FORWARD -i eth0 -o eth2 -d 172.1.99.0/24 -p tcp --sport 80 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -d 172.1.99.0/24 -p tcp --sport 443 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -d 172.1.99.0/24 -p udp --sport 53 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -i eth0 -o eth2 -d 172.1.99.0/24 -p udp --sport 123 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 ##### Logs para depurar
 iptables -A INPUT -j LOG --log-prefix "PES-INPUT: "
